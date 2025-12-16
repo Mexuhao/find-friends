@@ -15,6 +15,10 @@ type UserRow = {
 
 type UserWithGender = Pick<UserRow, 'id' | 'gender'>;
 
+type MatchLogWithCreatedAt = {
+  created_at: string;
+};
+
 const drawSchema = z.object({
   user_id: z.string().uuid()
 });
@@ -60,15 +64,16 @@ export async function POST(req: NextRequest) {
   const targetGender: 'male' | 'female' = user.gender === 'male' ? 'female' : 'male';
 
   // 2. 防刷：检查最近一次抽取记录
-  const { data: lastLog } = await supabase
+  const lastLogRes = await supabase
     .from('match_logs')
     .select('created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<MatchLogWithCreatedAt>();
 
-  if (lastLog) {
+  if (lastLogRes.data) {
+    const lastLog: MatchLogWithCreatedAt = lastLogRes.data;
     const lastTime = new Date(lastLog.created_at).getTime();
     if (Date.now() - lastTime < COOLDOWN_SECONDS * 1000) {
       return json<ApiResponse<never>>(
