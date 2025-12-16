@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = getServiceSupabase();
+  const supabase = await getServiceSupabase();
 
   // 1. 获取用户信息
   const { data: user, error: userError } = await supabase

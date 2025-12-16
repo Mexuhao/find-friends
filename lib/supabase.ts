@@ -1,12 +1,21 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServerEnv } from './env';
-import { Database } from './types';
+import type { Database } from './types';
 
 let client: SupabaseClient<Database> | null = null;
+let createClientPromise: Promise<typeof import('@supabase/supabase-js').createClient> | null = null;
 
-export function getServiceSupabase() {
+async function getCreateClient() {
+  if (!createClientPromise) {
+    createClientPromise = import('@supabase/supabase-js').then((mod) => mod.createClient);
+  }
+  return createClientPromise;
+}
+
+export async function getServiceSupabase() {
   if (client) return client;
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
+  const createClient = await getCreateClient();
 
   client = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {

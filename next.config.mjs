@@ -4,6 +4,7 @@ const nextConfig = {
   experimental: {
     typedRoutes: true
   },
+  transpilePackages: ['@supabase/supabase-js'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -13,6 +14,11 @@ const nextConfig = {
         tls: false
       };
     }
+    // 修复 ESM 模块导入问题
+    config.resolve.extensionAlias = {
+      '.js': ['.js', '.ts', '.tsx'],
+      '.mjs': ['.mjs', '.ts', '.tsx']
+    };
     return config;
   }
 };

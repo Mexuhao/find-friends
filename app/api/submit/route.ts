@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabase = getServiceSupabase();
+    const supabase = await getServiceSupabase();
     const { data, error } = await supabase
       .from('users')
       .insert({
