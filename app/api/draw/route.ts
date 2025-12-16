@@ -4,6 +4,15 @@ import { z } from 'zod';
 import { getServiceSupabase } from '@/lib/supabase';
 import type { ApiResponse, MatchResult } from '@/lib/types';
 
+type UserRow = {
+  id: string;
+  nickname: string;
+  age: number;
+  gender: 'male' | 'female';
+  wechat: string;
+  created_at?: string;
+};
+
 const drawSchema = z.object({
   user_id: z.string().uuid()
 });
@@ -34,9 +43,9 @@ export async function POST(req: NextRequest) {
   // 1. 获取用户信息
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('gender')
+    .select('id, gender')
     .eq('id', userId)
-    .single();
+    .single<UserRow>();
 
   if (userError || !user) {
     return json<ApiResponse<never>>(
@@ -45,7 +54,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const targetGender = user.gender === 'male' ? 'female' : 'male';
+  const targetGender: 'male' | 'female' = user.gender === 'male' ? 'female' : 'male';
 
   // 2. 防刷：检查最近一次抽取记录
   const { data: lastLog } = await supabase
@@ -69,46 +78,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3. 统计异性数量
-  const { count, error: countError } = await supabase
+  // 3. 随机抽取一条异性记录
+  const { data: matched, error: matchError } = await supabase
     .from('users')
-    .select('id', { count: 'exact', head: true })
+    .select('id, nickname, age, wechat')
     .eq('gender', targetGender)
-    .neq('id', userId);
+    .neq('id', userId)
+    .limit(1)
+    .maybeSingle<UserRow>();
 
-  if (countError) {
-    console.error('count users error', countError);
+  if (matchError) {
+    console.error('query match error', matchError);
     return json<ApiResponse<never>>(
       { success: false, error: { code: 'DB_ERROR', message: '服务异常，请稍后再试' } },
       500
     );
   }
 
-  if (!count || count <= 0) {
+  if (!matched) {
     return json<ApiResponse<never>>({
       success: false,
       error: { code: 'EMPTY_POOL', message: '当前暂无可匹配的异性用户，稍后再试' }
     });
   }
 
-  const randomOffset = Math.floor(Math.random() * count);
-
-  const { data: matches, error: matchError } = await supabase
-    .from('users')
-    .select('id, nickname, age, wechat')
-    .eq('gender', targetGender)
-    .neq('id', userId)
-    .range(randomOffset, randomOffset);
-
-  if (matchError || !matches || matches.length === 0) {
-    console.error('query match error', matchError);
-    return json<ApiResponse<never>>(
-      { success: false, error: { code: 'MATCH_FAIL', message: '匹配失败，请稍后再试' } },
-      500
-    );
-  }
-
-  const match = matches[0];
+  const match = matched;
 
   // 4. 记录日志（不影响用户成功拿到结果）
   const ip = req.headers.get('x-forwarded-for') || '';
