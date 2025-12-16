@@ -116,9 +116,14 @@ export async function POST(req: NextRequest) {
   // 4. 记录日志（不影响用户成功拿到结果）
   const ip = req.headers.get('x-forwarded-for') || '';
   const ipHash = ip ? crypto.createHash('sha256').update(ip).digest('hex').slice(0, 32) : null;
+  const logData: Database['public']['Tables']['match_logs']['Insert'] = {
+    user_id: userId,
+    matched_user_id: match.id,
+    ip_hash: ipHash ?? null
+  };
   supabase
     .from('match_logs')
-    .insert({ user_id: userId, matched_user_id: match.id, ip_hash: ipHash })
+    .insert(logData)
     .then(({ error }) => error && console.error('insert log error', error));
 
   const responseBody: ApiResponse<MatchResult> = {
