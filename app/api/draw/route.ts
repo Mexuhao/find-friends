@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/supabase';
-import type { ApiResponse, MatchResult } from '@/lib/types';
+import type { ApiResponse, MatchResult, Database } from '@/lib/types';
 
 type UserRow = {
   id: string;
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = await getServiceSupabase();
+  const supabase: SupabaseClient<Database> = await getServiceSupabase();
 
   // 1. 获取用户信息
   const userRes = await supabase

@@ -12,7 +12,7 @@ async function getCreateClient() {
   return createClientPromise;
 }
 
-export async function getServiceSupabase() {
+export async function getServiceSupabase(): Promise<SupabaseClient<Database>> {
   if (client) return client;
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
   const createClient = await getCreateClient();
@@ -27,7 +27,7 @@ export async function getServiceSupabase() {
         'x-client-info': 'find-friends-service'
       }
     }
-  });
+  }) as SupabaseClient<Database>;
 
   return client;
 }
