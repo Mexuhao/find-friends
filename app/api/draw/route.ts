@@ -13,6 +13,8 @@ type UserRow = {
   created_at?: string;
 };
 
+type UserWithGender = Pick<UserRow, 'id' | 'gender'>;
+
 const drawSchema = z.object({
   user_id: z.string().uuid()
 });
@@ -41,19 +43,20 @@ export async function POST(req: NextRequest) {
   const supabase = await getServiceSupabase();
 
   // 1. 获取用户信息
-  const { data: user, error: userError } = await supabase
+  const userRes = await supabase
     .from('users')
     .select('id, gender')
     .eq('id', userId)
-    .single<UserRow>();
+    .single<UserWithGender>();
 
-  if (userError || !user) {
+  if (userRes.error || !userRes.data) {
     return json<ApiResponse<never>>(
       { success: false, error: { code: 'USER_NOT_FOUND', message: '用户不存在，请重新提交信息' } },
       404
     );
   }
 
+  const user: UserWithGender = userRes.data;
   const targetGender: 'male' | 'female' = user.gender === 'male' ? 'female' : 'male';
 
   // 2. 防刷：检查最近一次抽取记录
